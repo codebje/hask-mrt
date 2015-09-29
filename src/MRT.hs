@@ -1,7 +1,20 @@
-module Main where
+{-|
+Module      : MRT
+Description : MRT Export Information Format parser
+License     : BSD3
+Stability   : Experimental
 
-import qualified Codec.Compression.BZip as BZ
-import           Control.Monad          (liftM, replicateM)
+MRT is a library for parsing Multi-Threaded Routing Toolkit (MRT) export
+files, of the kind you might find on the RouteViews archive.
+-}
+module MRT
+    ( Timestamp
+    , ASNumber
+    , MRTMessage
+    , readMessages
+    ) where
+
+import           Control.Monad          (replicateM)
 import           Data.Binary
 import qualified Data.Binary.Bits.Get   as BG
 import           Data.Binary.Get
@@ -10,8 +23,8 @@ import qualified Data.ByteString        as BS
 import           Data.Maybe             (listToMaybe)
 import           Data.IP
 
-import Debug.Trace
-
+-- |The `Timestamp` type alias represents a BGP timestamp attribute,
+-- recorded as seconds since the Unix epoch.
 type Timestamp  = Word32
 type ASNumber   = Word32
 
@@ -187,14 +200,3 @@ readMessages input = more (BL.toChunks input)
     go (Done r _ m) i = m : case i of { [] -> []; _ -> (more $ r : i) }
     go (Partial k)  i = go (k . listToMaybe $ i) (drop 1 i)
     go (Fail _ o s) _ = error (s ++ " at " ++ (show o))
-
-testStream :: IO BL.ByteString
-testStream = liftM BZ.decompress $ BL.readFile "rib.20150922.1200.bz2"
-
-sample :: IO [MRTMessage]
-sample = do
-    input <- testStream
-    return $ take 10 $ readMessages input
-
-main :: IO ()
-main = putStrLn "hello world"
