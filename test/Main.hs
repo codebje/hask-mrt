@@ -12,7 +12,7 @@ module Main where
 import qualified Codec.Compression.BZip as BZ
 import           Control.Monad          (liftM)
 import qualified Data.ByteString.Lazy   as BL
-import           MRT
+import           Net.MRT
 
 testStream :: IO BL.ByteString
 testStream = liftM BZ.decompress $ BL.readFile "rib.20150922.1200.bz2"
