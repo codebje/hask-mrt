@@ -1,0 +1,21 @@
+sudo: false
+language: c
+addons:
+  apt:
+    packages:
+      - libgmp-dev
+
+env:
+  - ARGS="--resolver lts-3"
+
+before_install:
+  - mkdir -p ~/.local/bin
+  - export PATH=$HOME/.local/bin:$PATH
+  - travis_retry curl -L https://github.com/commercialhaskell/stack/releases/download/v0.1.4.0/stack-0.1.4.0-x86_64-linux.tar.gz | tar xz -C ~/.local/bin
+
+script: stack $ARGS --no-terminal --install-ghc test --haddock
+
+# Caching so the next build will be fast too.
+cache:
+  directories:
+    - $HOME/.stack

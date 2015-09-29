@@ -1,14 +1,14 @@
-name:                bindec
+name:                haskmrt
 version:             0.1.0.0
-synopsis:            Simple project template from stack
+synopsis:            Haskell parser for MRT dump files
 description:         Please see README.md
-homepage:            http://github.com/codebje/bindec#readme
+homepage:            http://github.com/codebje/hask-mrt#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Byron Ellacott
 maintainer:          example@example.com
-copyright:           2010 Author Here
-category:            Web
+copyright:           2015 Byron Ellacott
+category:            Network, Data, Parsing
 build-type:          Simple
 cabal-version:       >=1.10
 
