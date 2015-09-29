@@ -7,7 +7,7 @@ Stability   : Experimental
 MRT is a library for parsing Multi-Threaded Routing Toolkit (MRT) export
 files, of the kind you might find on the RouteViews archive.
 -}
-module MRT
+module Net.MRT
     ( Timestamp
     , ASNumber
     , MRTMessage
