@@ -41,4 +41,4 @@ All other BGP attributes are stored as an unparsed `ByteString`.
 
 
 [RFC 6396]: https://tools.ietf.org/html/rfc6396
-[RV]: https://routeviews.org/
+[RV]: http://routeviews.org/
