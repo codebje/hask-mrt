@@ -11,17 +11,21 @@ module Net.MRT
     ( Timestamp
     , ASNumber
     , MRTMessage
+    , PathSegment
+    , PathSegmentType
+    , segmentType
+    , Net.MRT.sequence
     , readMessages
     ) where
 
-import           Control.Monad          (replicateM)
+import           Control.Monad        (replicateM, liftM)
 import           Data.Binary
-import qualified Data.Binary.Bits.Get   as BG
+import qualified Data.Binary.Bits.Get as BG
 import           Data.Binary.Get
-import qualified Data.ByteString.Lazy   as BL
-import qualified Data.ByteString        as BS
-import           Data.Maybe             (listToMaybe)
+import qualified Data.ByteString      as BS
+import qualified Data.ByteString.Lazy as BL
 import           Data.IP
+import           Data.Maybe           (listToMaybe)
 
 -- |The `Timestamp` type alias represents a BGP timestamp attribute,
 -- recorded as seconds since the Unix epoch.
@@ -45,8 +49,8 @@ instance Enum PathSegmentType where
     toEnum _                    = undefined
 
 data PathSegment = PathSegment
-    { segmentType       :: PathSegmentType
-    , sequence          :: [ASNumber] }
+    { segmentType :: PathSegmentType
+    , sequence    :: [ASNumber] }
     deriving (Show)
 
 data Community = NO_EXPORT
@@ -66,15 +70,15 @@ data BGPAttribute = ORIGIN Origin
     deriving (Show)
 
 data RIBEntry = RIBEntry
-    { peerIndex         :: Word16
-    , originationTime   :: Timestamp
-    , attributes        :: [BGPAttribute] }
+    { peerIndex       :: Word16
+    , originationTime :: Timestamp
+    , attributes      :: [BGPAttribute] }
     deriving (Show)
 
 data MRTRecord = TableDumpV2
-    { sequenceNo   :: Word32
-    , prefix       :: IPRange
-    , entries      :: [RIBEntry] }
+    { sequenceNo :: Word32
+    , prefix     :: IPRange
+    , entries    :: [RIBEntry] }
                | Other { skippedBytes :: Word32 }
     deriving (Show)
 
@@ -90,7 +94,7 @@ data BGPAttributeFlags = BGPAttributeFlags
     , isExtLength  :: Bool }
 
 instance Show BGPAttributeFlags where
-    show (BGPAttributeFlags o t p e) = map snd $ filter fst $ zipWith (,) [o, t, p, e] "OTPE"
+    show (BGPAttributeFlags o t p e) = map snd $ filter fst $ zip [o, t, p, e] "OTPE"
 
 getBytes8 :: Get BL.ByteString
 getBytes8 = getWord8 >>= getLazyByteString . fromIntegral
@@ -103,9 +107,9 @@ getBytes32be = getWord32be >>= getLazyByteString . fromIntegral
 
 getIPRange :: (Addr a) => (AddrRange a -> IPRange) -> ([Int] -> a) -> Int -> Get IPRange
 getIPRange toRange toAddr bits = do
-    maskLength <- getWord8 >>= return . fromIntegral
+    maskLength <- liftM fromIntegral getWord8
     let dataLength = (maskLength - 1) `div` 8 + 1
-    bytes <- getByteString dataLength >>= return . (take bits) . (++ (replicate bits 0)) . BS.unpack
+    bytes <- liftM (take bits . (++ replicate bits 0) . BS.unpack) (getByteString dataLength)
     let address = toAddr (map fromIntegral bytes)
     let range = makeAddrRange address maskLength
     return $ toRange range
@@ -117,7 +121,7 @@ getIPv6Range :: Get IPRange
 getIPv6Range = getIPRange IPv6Range toIPv6b 16
 
 getIPv4 :: Get IPv4
-getIPv4 = getByteString 4 >>= return . toIPv4 . (map fromIntegral) . BS.unpack
+getIPv4 = liftM (toIPv4 . map fromIntegral . BS.unpack) (getByteString 4)
 
 getAttrFlags :: Get BGPAttributeFlags
 getAttrFlags = BG.runBitGet $
@@ -155,7 +159,7 @@ getAttribute :: Get BGPAttribute
 getAttribute = do
     flags <- getAttrFlags
     atype <- getWord8
-    size  <- if (isExtLength flags) then getWord16be else getWord8 >>= return . fromIntegral
+    size  <- if isExtLength flags then getWord16be else liftM fromIntegral getWord8
     bytes <- getByteString (fromIntegral size)
     return $ attributeReader atype bytes
 
@@ -172,7 +176,7 @@ getRIBEntry :: Get RIBEntry
 getRIBEntry = RIBEntry
           <$> getWord16be
           <*> getWord32be
-          <*> (getBytes16be >>= return . runGet getAttributes)
+          <*> liftM (runGet getAttributes) getBytes16be
 
 getRIBEntries :: Get [RIBEntry]
 getRIBEntries = do
@@ -180,10 +184,9 @@ getRIBEntries = do
     replicateM (fromIntegral count) getRIBEntry
 
 readPayload :: Word16 -> Word16 -> BL.ByteString -> MRTRecord
-readPayload 13 4 d = (flip runGet) d $ do
-    TableDumpV2 <$> getWord32be
-                <*> getIPv6Range
-                <*> getRIBEntries
+readPayload 13 4 d = flip runGet d $ TableDumpV2 <$> getWord32be
+                                                 <*> getIPv6Range
+                                                 <*> getRIBEntries
 readPayload _ _ d  = Other $ fromIntegral (BL.length d)
 
 readMessage :: Get MRTMessage
@@ -197,6 +200,6 @@ readMessages input = more (BL.toChunks input)
   where
     more = go (runGetIncremental readMessage)
     go :: Decoder MRTMessage -> [BS.ByteString] -> [MRTMessage]
-    go (Done r _ m) i = m : case i of { [] -> []; _ -> (more $ r : i) }
+    go (Done r _ m) i = m : case i of { [] -> []; _ -> more $ r : i }
     go (Partial k)  i = go (k . listToMaybe $ i) (drop 1 i)
-    go (Fail _ o s) _ = error (s ++ " at " ++ (show o))
+    go (Fail _ o s) _ = error (s ++ " at " ++ show o)
