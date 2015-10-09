@@ -23,7 +23,6 @@ module Data.Binary.MRT
     , MRTMessage
     , getMessageTimestamp
     , getRecord
-    , BGPAttributeFlags
     , readMessages
     ) where
 
@@ -39,27 +38,6 @@ import           Data.Maybe           (listToMaybe)
 -- |The `Timestamp` type alias represents a BGP timestamp attribute,
 -- recorded as seconds since the Unix epoch.
 type Timestamp  = Word32
-
-data RIBEntry = RIBEntry
-    { getPeerIndex       :: Word16
-    , getOriginationTime :: Timestamp
-    , getBGPAttributes   :: [BGPAttribute] }
-    deriving (Show)
-
-data MRTRecord = TableDumpV2
-    { getSequenceNo :: Word32
-    , getPrefix     :: IPRange
-    , getRIBEntries :: [RIBEntry] }
-               | Other { getSkippedBytes :: Word32 }
-    deriving (Show)
-
-data MRTMessage = MRTMessage
-    { getMessageTimestamp :: Timestamp
-    , getRecord           :: MRTRecord }
-    deriving (Show)
-
--- feh.
-
 type ASNumber   = Word32
 
 data Origin = IGP | EGP | INCOMPLETE deriving (Show, Eq, Enum)
@@ -95,6 +73,24 @@ data BGPAttributeFlags = BGPAttributeFlags
 instance Show BGPAttributeFlags where
     show (BGPAttributeFlags o t p e) = map snd $ filter fst $ zip [o, t, p, e] "OTPE"
 
+data RIBEntry = RIBEntry
+    { getPeerIndex       :: Word16
+    , getOriginationTime :: Timestamp
+    , getBGPAttributes   :: [BGPAttribute] }
+    deriving (Show)
+
+data MRTRecord = TableDumpV2
+    { getSequenceNo :: Word32
+    , getPrefix     :: IPRange
+    , getRIBEntries :: [RIBEntry] }
+               | Other { getSkippedBytes :: Word32 }
+    deriving (Show)
+
+data MRTMessage = MRTMessage
+    { getMessageTimestamp :: Timestamp
+    , getRecord           :: MRTRecord }
+    deriving (Show)
+
 getIPRange :: (Addr a) => (AddrRange a -> IPRange) -> ([Int] -> a) -> Int -> Get IPRange
 getIPRange toRange toAddr bits = do
     maskLength <- liftM fromIntegral getWord8
@@ -112,7 +108,6 @@ getIPv6Range = getIPRange IPv6Range toIPv6b 16
 
 getIPv4 :: Get IPv4
 getIPv4 = liftM (toIPv4 . map fromIntegral . BS.unpack) (getByteString 4)
-
 
 getAttrFlags :: Get BGPAttributeFlags
 getAttrFlags = BG.runBitGet $
@@ -153,11 +148,6 @@ getAttribute = do
     size  <- if isExtLength flags then getWord16be else liftM fromIntegral getWord8
     bytes <- getByteString (fromIntegral size)
     return $ attributeReader atype bytes
-
--- feh.
-
-getBytes8 :: Get BL.ByteString
-getBytes8 = getWord8 >>= getLazyByteString . fromIntegral
 
 getBytes16be :: Get BL.ByteString
 getBytes16be = getWord16be >>= getLazyByteString . fromIntegral
