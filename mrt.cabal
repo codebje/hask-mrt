@@ -14,7 +14,7 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Net.MRT, Net.BGP
+  exposed-modules:     Net.MRT
   default-language:    Haskell2010
   ghc-options:         -O2 -Wall -fwarn-tabs
   build-depends:       base >= 4.7 && < 5
