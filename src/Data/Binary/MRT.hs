@@ -7,6 +7,9 @@ Stability   : Experimental
 MRT is a library for parsing Multi-Threaded Routing Toolkit (MRT) export
 files, of the kind you might find on the RouteViews archive.
 -}
+
+{-# LANGUAGE LambdaCase #-}
+
 module Data.Binary.MRT
     ( Timestamp
     , ASNumber
@@ -83,7 +86,9 @@ data MRTRecord = TableDumpV2
     { getSequenceNo :: Word32
     , getPrefix     :: IPRange
     , getRIBEntries :: [RIBEntry] }
-               | Other { getSkippedBytes :: Word32 }
+               | Other { getTypeCode :: Word16
+                       , getSubType  :: Word16
+                       , getSkippedBytes :: Word32 }
     deriving (Show)
 
 data MRTMessage = MRTMessage
@@ -131,9 +136,26 @@ getCommunities = do
                 communities <- getCommunities
                 return (community:communities)
 
+getPathSegment :: Get ASPathSegment
+getPathSegment = do
+    segType <- getWord8
+    segLength <- getWord8
+    ases <- getTimes segLength getWord32be
+    case segType of
+        1 -> return $ Set ases
+        2 -> return $ Sequence ases
+        3 -> return $ ConfedSet ases
+        4 -> return $ ConfedSequence ases
+        _ -> fail $ "Unknown segment type " ++ show segType
+
+getPathSegments :: Get [ASPathSegment]
+getPathSegments = isEmpty >>= \case
+    True -> return []
+    False -> (:) <$> getPathSegment <*> getPathSegments
+
 attributeReader :: Word8 -> BS.ByteString -> BGPAttribute
 attributeReader 1  = Origin . toEnum . fromIntegral . BS.head
-attributeReader 2  = const (ASPath [])
+attributeReader 2  = ASPath . runGet getPathSegments . BL.fromStrict
 attributeReader 5  = LocalPref . BS.foldl (\t v -> t * 256 + fromIntegral v) 0
 attributeReader 6  = const AtomicAggregate
 attributeReader 7  = runGet (Aggregator <$> getWord32be <*> getIPv4) . BL.fromStrict
@@ -174,10 +196,13 @@ getTimes :: (Integral a) => a -> Get b -> Get [b]
 getTimes = replicateM . fromIntegral
 
 readPayload :: Word16 -> Word16 -> BL.ByteString -> MRTRecord
+readPayload 13 2 d = flip runGet d $ TableDumpV2 <$> getWord32be
+                                                 <*> getIPv4Range
+                                                 <*> (getWord16be >>= flip getTimes getRIBEntry)
 readPayload 13 4 d = flip runGet d $ TableDumpV2 <$> getWord32be
                                                  <*> getIPv6Range
                                                  <*> (getWord16be >>= flip getTimes getRIBEntry)
-readPayload _ _ d  = Other $ fromIntegral (BL.length d)
+readPayload t s d  = Other t s $ fromIntegral (BL.length d)
 
 readMessage :: Get MRTMessage
 readMessage = do
