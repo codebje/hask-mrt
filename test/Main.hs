@@ -15,12 +15,12 @@ import qualified Data.ByteString.Lazy   as BL
 import           Net.MRT
 
 testStream :: IO BL.ByteString
-testStream = liftM BZ.decompress $ BL.readFile "rib.20150922.1200.bz2"
+testStream = liftM BZ.decompress $ BL.readFile "rib.v6.20150903.0400.bz2"
 
 sample :: IO [MRTMessage]
 sample = do
     input <- testStream
-    return $ take 10 $ readMessages input
+    return $ readMessages input
 
 main :: IO ()
 main = sample >>= mapM_ print

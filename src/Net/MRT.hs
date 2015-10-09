@@ -10,15 +10,24 @@ files, of the kind you might find on the RouteViews archive.
 module Net.MRT
     ( Timestamp
     , ASNumber
+    , ASPathSegment
+    , RIBEntry
+    , getPeerIndex
+    , getOriginationTime
+    , getBGPAttributes
+    , MRTRecord
+    , getSequenceNo
+    , getPrefix
+    , getRIBEntries
+    , getSkippedBytes
     , MRTMessage
-    , PathSegment
-    , PathSegmentType
-    , segmentType
-    , Net.MRT.sequence
+    , getMessageTimestamp
+    , getRecord
+    , BGPAttributeFlags
     , readMessages
     ) where
 
-import           Control.Monad        (replicateM, liftM)
+import           Control.Monad        (liftM, replicateM)
 import           Data.Binary
 import qualified Data.Binary.Bits.Get as BG
 import           Data.Binary.Get
@@ -30,61 +39,51 @@ import           Data.Maybe           (listToMaybe)
 -- |The `Timestamp` type alias represents a BGP timestamp attribute,
 -- recorded as seconds since the Unix epoch.
 type Timestamp  = Word32
+
+data RIBEntry = RIBEntry
+    { getPeerIndex       :: Word16
+    , getOriginationTime :: Timestamp
+    , getBGPAttributes   :: [BGPAttribute] }
+    deriving (Show)
+
+data MRTRecord = TableDumpV2
+    { getSequenceNo :: Word32
+    , getPrefix     :: IPRange
+    , getRIBEntries :: [RIBEntry] }
+               | Other { getSkippedBytes :: Word32 }
+    deriving (Show)
+
+data MRTMessage = MRTMessage
+    { getMessageTimestamp :: Timestamp
+    , getRecord           :: MRTRecord }
+    deriving (Show)
+
+-- feh.
+
 type ASNumber   = Word32
 
 data Origin = IGP | EGP | INCOMPLETE deriving (Show, Eq, Enum)
 
-data PathSegmentType = SEQUENCE | SET | CONFED_SEQUENCE | CONFED_SET
-    deriving (Show, Eq)
-
-instance Enum PathSegmentType where
-    fromEnum SEQUENCE           = 1
-    fromEnum SET                = 2
-    fromEnum CONFED_SEQUENCE    = 3
-    fromEnum CONFED_SET         = 4
-    toEnum 1                    = SEQUENCE
-    toEnum 2                    = SET
-    toEnum 3                    = CONFED_SEQUENCE
-    toEnum 4                    = CONFED_SET
-    toEnum _                    = undefined
-
-data PathSegment = PathSegment
-    { segmentType :: PathSegmentType
-    , sequence    :: [ASNumber] }
+data ASPathSegment = Sequence [ASNumber]
+                   | Set [ASNumber]
+                   | ConfedSequence [ASNumber]
+                   | ConfedSet [ASNumber]
     deriving (Show)
 
 data Community = NO_EXPORT
                | NO_ADVERTISE
                | NO_EXPORT_SUBCONFED
                | COMMUNITY Word32
-               deriving (Show)
+   deriving (Show)
 
-data BGPAttribute = ORIGIN Origin
-                  | AS_PATH [PathSegment]
-                  | LOCAL_PREF Word16
-                  | ATOMIC_AGGREGATE
-                  | AGGREGATOR ASNumber IPv4
-                  | MP_REACH_NLRI -- contents discarded
-                  | COMMUNITIES [Community]
+data BGPAttribute = Origin Origin
+                  | ASPath [ASPathSegment]
+                  | LocalPref Word16
+                  | AtomicAggregate
+                  | Aggregator ASNumber IPv4
+                  | MultipathReach -- contents discarded
+                  | Communities [Community]
                   | UnknownAttribute Word8 BS.ByteString
-    deriving (Show)
-
-data RIBEntry = RIBEntry
-    { peerIndex       :: Word16
-    , originationTime :: Timestamp
-    , attributes      :: [BGPAttribute] }
-    deriving (Show)
-
-data MRTRecord = TableDumpV2
-    { sequenceNo :: Word32
-    , prefix     :: IPRange
-    , entries    :: [RIBEntry] }
-               | Other { skippedBytes :: Word32 }
-    deriving (Show)
-
-data MRTMessage = MRTMessage
-    { timestamp :: Timestamp
-    , payload   :: MRTRecord }
     deriving (Show)
 
 data BGPAttributeFlags = BGPAttributeFlags
@@ -95,15 +94,6 @@ data BGPAttributeFlags = BGPAttributeFlags
 
 instance Show BGPAttributeFlags where
     show (BGPAttributeFlags o t p e) = map snd $ filter fst $ zip [o, t, p, e] "OTPE"
-
-getBytes8 :: Get BL.ByteString
-getBytes8 = getWord8 >>= getLazyByteString . fromIntegral
-
-getBytes16be :: Get BL.ByteString
-getBytes16be = getWord16be >>= getLazyByteString . fromIntegral
-
-getBytes32be :: Get BL.ByteString
-getBytes32be = getWord32be >>= getLazyByteString . fromIntegral
 
 getIPRange :: (Addr a) => (AddrRange a -> IPRange) -> ([Int] -> a) -> Int -> Get IPRange
 getIPRange toRange toAddr bits = do
@@ -122,6 +112,7 @@ getIPv6Range = getIPRange IPv6Range toIPv6b 16
 
 getIPv4 :: Get IPv4
 getIPv4 = liftM (toIPv4 . map fromIntegral . BS.unpack) (getByteString 4)
+
 
 getAttrFlags :: Get BGPAttributeFlags
 getAttrFlags = BG.runBitGet $
@@ -146,13 +137,13 @@ getCommunities = do
                 return (community:communities)
 
 attributeReader :: Word8 -> BS.ByteString -> BGPAttribute
-attributeReader 1  = ORIGIN . toEnum . fromIntegral . BS.head
-attributeReader 2  = const (AS_PATH [])
-attributeReader 5  = LOCAL_PREF . BS.foldl (\t v -> t * 256 + fromIntegral v) 0
-attributeReader 6  = const ATOMIC_AGGREGATE
-attributeReader 7  = runGet (AGGREGATOR <$> getWord32be <*> getIPv4) . BL.fromStrict
-attributeReader 8  = runGet (COMMUNITIES <$> getCommunities) . BL.fromStrict
-attributeReader 14 = const MP_REACH_NLRI
+attributeReader 1  = Origin . toEnum . fromIntegral . BS.head
+attributeReader 2  = const (ASPath [])
+attributeReader 5  = LocalPref . BS.foldl (\t v -> t * 256 + fromIntegral v) 0
+attributeReader 6  = const AtomicAggregate
+attributeReader 7  = runGet (Aggregator <$> getWord32be <*> getIPv4) . BL.fromStrict
+attributeReader 8  = runGet (Communities <$> getCommunities) . BL.fromStrict
+attributeReader 14 = const MultipathReach
 attributeReader t  = UnknownAttribute t
 
 getAttribute :: Get BGPAttribute
@@ -162,6 +153,17 @@ getAttribute = do
     size  <- if isExtLength flags then getWord16be else liftM fromIntegral getWord8
     bytes <- getByteString (fromIntegral size)
     return $ attributeReader atype bytes
+
+-- feh.
+
+getBytes8 :: Get BL.ByteString
+getBytes8 = getWord8 >>= getLazyByteString . fromIntegral
+
+getBytes16be :: Get BL.ByteString
+getBytes16be = getWord16be >>= getLazyByteString . fromIntegral
+
+getBytes32be :: Get BL.ByteString
+getBytes32be = getWord32be >>= getLazyByteString . fromIntegral
 
 getAttributes :: Get [BGPAttribute]
 getAttributes = do
@@ -178,15 +180,13 @@ getRIBEntry = RIBEntry
           <*> getWord32be
           <*> liftM (runGet getAttributes) getBytes16be
 
-getRIBEntries :: Get [RIBEntry]
-getRIBEntries = do
-    count <- getWord16be
-    replicateM (fromIntegral count) getRIBEntry
+getTimes :: (Integral a) => a -> Get b -> Get [b]
+getTimes = replicateM . fromIntegral
 
 readPayload :: Word16 -> Word16 -> BL.ByteString -> MRTRecord
 readPayload 13 4 d = flip runGet d $ TableDumpV2 <$> getWord32be
                                                  <*> getIPv6Range
-                                                 <*> getRIBEntries
+                                                 <*> (getWord16be >>= flip getTimes getRIBEntry)
 readPayload _ _ d  = Other $ fromIntegral (BL.length d)
 
 readMessage :: Get MRTMessage
