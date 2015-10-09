@@ -11,16 +11,14 @@ module Main where
 
 import qualified Codec.Compression.BZip as BZ
 import           Control.Monad          (liftM)
+import           Data.Binary.MRT
 import qualified Data.ByteString.Lazy   as BL
-import           Net.MRT
+import           System.Environment
 
-testStream :: IO BL.ByteString
-testStream = liftM BZ.decompress $ BL.readFile "rib.v6.20150903.0400.bz2"
-
-sample :: IO [MRTMessage]
-sample = do
-    input <- testStream
-    return $ readMessages input
+loadStream :: FilePath -> IO BL.ByteString
+loadStream = liftM BZ.decompress . BL.readFile
 
 main :: IO ()
-main = sample >>= mapM_ print
+main = do
+  args <- getArgs
+  mapM_ ((mapM_ print =<<) . (liftM readMessages <$> loadStream)) args
