@@ -11,6 +11,9 @@ copyright:           2015 Byron Ellacott
 category:            Network, Data, Parsing
 build-type:          Simple
 cabal-version:       >=1.10
+extra-source-files:  README.md
+                     Setup.hs
+                     stack.yaml
 
 library
   hs-source-dirs:      src
