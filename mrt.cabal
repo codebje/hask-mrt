@@ -8,9 +8,10 @@ license-file:        LICENSE
 author:              Byron Ellacott
 maintainer:          example@example.com
 copyright:           2015 Byron Ellacott
+tested-with:         GHC==7.10.2
 category:            Network, Data, Parsing
 build-type:          Simple
-cabal-version:       >=1.10
+cabal-version:       >=1.20
 extra-source-files:  README.md
                      Setup.hs
                      stack.yaml
@@ -18,6 +19,7 @@ extra-source-files:  README.md
 library
   hs-source-dirs:      src
   exposed-modules:     Data.Binary.MRT
+                       Data.Binary.IP
   default-language:    Haskell2010
   ghc-options:         -O2 -Wall -fwarn-tabs
   build-depends:       base >= 4.7 && < 5
@@ -25,14 +27,16 @@ library
                      , binary-bits
                      , bytestring
                      , iproute
+
 test-suite test-mrt
-  type:                 exitcode-stdio-1.0
-  hs-source-dirs:       test
-  main-is:              TestHarness.hs
-  default-language:     Haskell2010
-  build-depends:        base, Cabal >= 1.20.0
-                      , QuickCheck >= 2.4
-                      , mrt
+  ghc-options:        -Wall
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     test
+  main-is:            TestHarness.hs
+  default-language:   Haskell2010
+  build-depends:      base, Cabal >= 1.20.0
+                    , QuickCheck >= 2.4
+                    , mrt
 
 executable haskmrt
   hs-source-dirs:      test
@@ -46,4 +50,4 @@ executable haskmrt
 
 source-repository head
   type:     git
-  location: https://github.com/codebje/hask-mrt
+  location: git://github.com/codebje/hask-mrt.git

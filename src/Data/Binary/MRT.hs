@@ -33,6 +33,7 @@ import           Control.Monad        (liftM, replicateM)
 import           Data.Binary
 import qualified Data.Binary.Bits.Get as BG
 import           Data.Binary.Get
+import           Data.Binary.IP
 import qualified Data.ByteString      as BS
 import qualified Data.ByteString.Lazy as BL
 import           Data.IP
@@ -110,9 +111,6 @@ getIPv4Range = getIPRange IPv4Range toIPv4 4
 
 getIPv6Range :: Get IPRange
 getIPv6Range = getIPRange IPv6Range toIPv6b 16
-
-getIPv4 :: Get IPv4
-getIPv4 = liftM (toIPv4 . map fromIntegral . BS.unpack) (getByteString 4)
 
 getAttrFlags :: Get BGPAttributeFlags
 getAttrFlags = BG.runBitGet $
