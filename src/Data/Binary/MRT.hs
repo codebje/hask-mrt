@@ -35,6 +35,8 @@ module Data.Binary.MRT
     , getMessageTimestamp
     , getRecord
     , readMessages
+    -- re-export IPs
+    , IPRange
     ) where
 
 import           Control.Monad        (liftM, replicateM)
