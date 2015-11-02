@@ -14,11 +14,19 @@ module Data.Binary.MRT
     ( Timestamp
     , ASNumber
     , ASPathSegment
+    , BGPAttribute ( Origin
+                   , ASPath
+                   , LocalPref
+                   , AtomicAggregate
+                   , Aggregator
+                   , MultipathReach
+                   , Communities
+                   , UnknownAttribute)
     , RIBEntry
     , getPeerIndex
     , getOriginationTime
     , getBGPAttributes
-    , MRTRecord
+    , MRTRecord (TableDumpV2, Other)
     , getSequenceNo
     , getPrefix
     , getRIBEntries
@@ -83,12 +91,11 @@ data RIBEntry = RIBEntry
     , getBGPAttributes   :: [BGPAttribute] }
     deriving (Show)
 
-data MRTRecord = TableDumpV2
-    { getSequenceNo :: Word32
-    , getPrefix     :: IPRange
-    , getRIBEntries :: [RIBEntry] }
-               | Other { getTypeCode :: Word16
-                       , getSubType  :: Word16
+data MRTRecord = TableDumpV2 { getSequenceNo :: Word32
+                             , getPrefix     :: IPRange
+                             , getRIBEntries :: [RIBEntry] }
+               | Other { getTypeCode     :: Word16
+                       , getSubType      :: Word16
                        , getSkippedBytes :: Word32 }
     deriving (Show)
 
