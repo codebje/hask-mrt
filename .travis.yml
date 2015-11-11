@@ -17,7 +17,7 @@ before_install:
   - stack install pandoc
 
 script:
-  - stack $ARGS --no-terminal --install-ghc --haddock test
+  - stack $ARGS --no-terminal --install-ghc test --haddock
   - bash ./docs.sh
 
 # Caching so the next build will be faster
