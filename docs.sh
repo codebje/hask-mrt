@@ -15,4 +15,4 @@ git config user.email "docbuilder@example.com"
 git config push.default simple
 git add .
 git commit -m "Build docs for $TRAVIS_COMMIT ($TRAVIS_BRANCH)" || true
-git push --force --quiet "https://${GH_AUTH}@${GH_REF}" master:gh-pages #> /dev/null 2>&1 || true
+git push --force --quiet "https://${GH_AUTH}@${GH_REF}" master:gh-pages > /dev/null 2>&1 || true
