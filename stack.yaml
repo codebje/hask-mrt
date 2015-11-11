@@ -3,4 +3,4 @@ packages:
   - '.'
 extra-deps:
   - binary-bits-0.5
-resolver: lts-3.8
+resolver: lts-3.13

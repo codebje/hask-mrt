@@ -1,10 +1,4 @@
-<p align="center">
-  <a href="https://travis-ci.org/codebje/hask-mrt">
-    <img src="https://travis-ci.org/codebje/hask-mrt.svg">
-  </a>
-</p>
-
-## Haskell MRT
+## Haskell MRT ![Build status](https://travis-ci.org/codebje/hask-mrt.svg)
 
 `hask-mrt` is a library for parsing Multi-Threaded Routing Toolkit (MRT) export
 files, of the kind you might find on the [RouteViews][RV] archive.

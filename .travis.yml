@@ -7,13 +7,17 @@ addons:
 
 env:
   - ARGS="--resolver lts-3"
+  - GH_REF="github.com/codebje/hask-mrt.git"
 
 before_install:
   - mkdir -p ~/.local/bin
   - export PATH=$HOME/.local/bin:$PATH
   - travis_retry curl -L https://github.com/commercialhaskell/stack/releases/download/v0.1.4.0/stack-0.1.4.0-x86_64-linux.tar.gz | tar xz -C ~/.local/bin
+  - stack install pandoc
 
-script: stack $ARGS --no-terminal --install-ghc test
+script:
+  - stack $ARGS --no-terminal --install-ghc --haddock test
+  - bash ./docs.sh
 
 # Caching so the next build will be faster
 cache:
