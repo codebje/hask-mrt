@@ -9,11 +9,12 @@ env:
   global:
     - ARGS="--resolver lts-3"
     - GH_REF="github.com/codebje/hask-mrt.git"
+    - STACK=https://github.com/commercialhaskell/stack/releases/download/v0.1.6.0/stack-0.1.6.0-linux-x86_64.tar.gz
 
 before_install:
   - mkdir -p ~/.local/bin
   - export PATH=$HOME/.local/bin:$PATH
-  - travis_retry curl -L https://github.com/commercialhaskell/stack/releases/download/v0.1.6.0/stack-0.1.6.0-linux-x86_64.tar.gz | tar xz -C ~/.local/bin
+  - travis_retry curl -L "$STACK" | tar xz --strip-components=1 -C ~/.local/bin
   - stack install pandoc
   - stack install hscolour
 
