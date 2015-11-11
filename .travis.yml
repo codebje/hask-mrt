@@ -6,8 +6,9 @@ addons:
       - libgmp-dev
 
 env:
-  - ARGS="--resolver lts-3"
-  - GH_REF="github.com/codebje/hask-mrt.git"
+  global:
+    - ARGS="--resolver lts-3"
+    - GH_REF="github.com/codebje/hask-mrt.git"
 
 before_install:
   - mkdir -p ~/.local/bin
