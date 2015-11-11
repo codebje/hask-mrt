@@ -7,8 +7,8 @@ RESOLVER="$( sed -ne 's/^resolver: *//p' stack.yaml )"
 STACKDOCS="http:\/\/haddock.stackage.org\/${RESOLVER}\/"
 README="<div id=\"description\">$( stack exec pandoc -- -t html README.md | sed 's:[/&\]:\\&:g;s/$/\\/')<\\/div>"
 cd "$DOCS"
-sed -i '' "s/<div id=\"content\"><div id=\"module-list\">/<div id=\"content\">${README}<div id=\"module-list\">/" index.html
-find . -type f -name \*.html -exec sed -i '' "s/href=\"..\//href=\"${STACKDOCS}/g" {} \;
+sed -i "s/<div id=\"content\"><div id=\"module-list\">/<div id=\"content\">${README}<div id=\"module-list\">/" index.html
+find . -type f -name \*.html -exec sed -i "s/href=\"..\//href=\"${STACKDOCS}/g" {} \;
 git init
 git config user.name "Travis CI"
 git config user.email "docbuilder@example.com"
