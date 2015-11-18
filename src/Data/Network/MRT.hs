@@ -1,6 +1,6 @@
 {-|
-Module      : MRT
-Description : MRT Export Information Format parser
+Module      : Data.Network.MRT
+Description : Multi-Threaded Routing Toolkit Export Information Format types
 License     : BSD3
 Stability   : Experimental
 
@@ -10,7 +10,7 @@ files, of the kind you might find on the RouteViews archive.
 
 {-# LANGUAGE LambdaCase #-}
 
-module Data.Binary.MRT
+module Data.Network.MRT
     ( Timestamp
     , ASNumber
     , ASPathSegment
@@ -43,24 +43,16 @@ import           Control.Monad        (liftM, replicateM)
 import           Data.Binary
 import qualified Data.Binary.Bits.Get as BG
 import           Data.Binary.Get
-import           Data.Binary.IP
 import qualified Data.ByteString      as BS
 import qualified Data.ByteString.Lazy as BL
 import           Data.IP
 import           Data.Maybe           (listToMaybe)
+import           Data.Network.BGP
+import           Data.Network.IP
 
 -- |The `Timestamp` type alias represents a BGP timestamp attribute,
 -- recorded as seconds since the Unix epoch.
 type Timestamp  = Word32
-type ASNumber   = Word32
-
-data Origin = IGP | EGP | INCOMPLETE deriving (Show, Eq, Enum)
-
-data ASPathSegment = Sequence [ASNumber]
-                   | Set [ASNumber]
-                   | ConfedSequence [ASNumber]
-                   | ConfedSet [ASNumber]
-    deriving (Show)
 
 data Community = NO_EXPORT
                | NO_ADVERTISE
@@ -143,29 +135,12 @@ getCommunities = do
                 communities <- getCommunities
                 return (community:communities)
 
-getPathSegment :: Get ASPathSegment
-getPathSegment = do
-    segType <- getWord8
-    segLength <- getWord8
-    ases <- getTimes segLength getWord32be
-    case segType of
-        1 -> return $ Set ases
-        2 -> return $ Sequence ases
-        3 -> return $ ConfedSet ases
-        4 -> return $ ConfedSequence ases
-        _ -> fail $ "Unknown segment type " ++ show segType
-
-getPathSegments :: Get [ASPathSegment]
-getPathSegments = isEmpty >>= \case
-    True -> return []
-    False -> (:) <$> getPathSegment <*> getPathSegments
-
 attributeReader :: Word8 -> BS.ByteString -> BGPAttribute
 attributeReader 1  = Origin . toEnum . fromIntegral . BS.head
 attributeReader 2  = ASPath . runGet getPathSegments . BL.fromStrict
 attributeReader 5  = LocalPref . BS.foldl (\t v -> t * 256 + fromIntegral v) 0
 attributeReader 6  = const AtomicAggregate
-attributeReader 7  = runGet (Aggregator <$> getWord32be <*> getIPv4) . BL.fromStrict
+attributeReader 7  = runGet (Aggregator <$> getWord32be <*> get) . BL.fromStrict
 attributeReader 8  = runGet (Communities <$> getCommunities) . BL.fromStrict
 attributeReader 14 = const MultipathReach
 attributeReader t  = UnknownAttribute t

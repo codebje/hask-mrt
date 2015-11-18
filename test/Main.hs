@@ -12,7 +12,7 @@ module Main where
 import Data.Maybe (listToMaybe)
 import qualified Codec.Compression.BZip as BZ
 import           Control.Monad          (liftM)
-import           Data.Binary.MRT
+import           Data.Network.MRT
 import qualified Data.ByteString.Lazy   as BL
 import           System.Environment
 

@@ -10,8 +10,7 @@ files, of the kind you might find on the RouteViews archive.
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Data.Binary.IP ( IPv4, IPv6 )
-  where
+module Data.Network.IP (IPv4, IPv6) where
 
 import           Control.Monad   (liftM)
 import           Data.Binary
