@@ -18,8 +18,9 @@ extra-source-files:  README.md
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Data.Binary.MRT
-                       Data.Binary.IP
+  exposed-modules:     Data.Network.BGP
+                       Data.Network.MRT
+  additional-modules:  Data.Network.IP
   default-language:    Haskell2010
   ghc-options:         -O2 -Wall -fwarn-tabs
   build-depends:       base >= 4.7 && < 5
