@@ -1,0 +1,26 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><title></title><link href="ocean.css" rel="stylesheet" type="text/css" title="Ocean" /><script src="haddock-util.js" type="text/javascript"></script><script type="text/javascript">//<![CDATA[
+window.onload = function () {pageLoad();};
+//]]>
+</script></head><body><div id="package-header"><ul class="links" id="page-menu"><li><a href="index.html">Contents</a></li><li><a href="doc-index.html">Index</a></li></ul><p class="caption empty">&nbsp;</p></div><div id="content"><div id="description"><h2 id="haskell-mrt">Haskell MRT</h2>
+<p><code>hask-mrt</code> is a library for parsing Multi-Threaded Routing Toolkit (MRT) export files, of the kind you might find on the <a href="http://routeviews.org/">RouteViews</a> archive.</p>
+<p>Building should be done using <code>stack</code>, but you can use <code>cabal</code> if you really want.</p>
+<p><a href="http://λ.bje.id.au/hask-mrt/">Documentation</a> for the latest build is available.</p>
+<p><a href="https://travis-ci.org/codebje/hask-mrt"><img src="https://travis-ci.org/codebje/hask-mrt.svg" alt="Build status" /></a></p>
+<h3 id="support-for-data-types">Support for data types</h3>
+<h4 id="mrt-record-types">MRT record types</h4>
+<ul>
+<li><code>TableDumpV2</code> records</li>
+<li><code>PeerIndex</code> records (ignored)</li>
+</ul>
+<p>All other record types are currently an error. <code>PeerIndex</code> tables are currently ignored - <code>TableDumpV2</code> records don't contain peer information.</p>
+<h4 id="bgp-attributes">BGP attributes</h4>
+<ul>
+<li>BGP Origin</li>
+<li>Local Preference</li>
+<li>Atomic Aggregate</li>
+<li>Aggregator</li>
+<li>Communities</li>
+</ul>
+<p>All other BGP attributes are stored as an unparsed <code>ByteString</code>.</p>
+<h3 id="specifications">Specifications</h3>
+<p><a href="https://tools.ietf.org/html/rfc6396">RFC 6396</a> - Multi-Threaded Routing Toolkit (MRT) Routing Information Export Format</p></div><div id="module-list"><p class="caption">Modules</p><ul><li><span id="control.n.1" class="module collapser" onclick="toggleSection('n.1')">Data</span><ul id="section.n.1" class="show"><li><span id="control.n.1.1" class="module collapser" onclick="toggleSection('n.1.1')">Network</span><ul id="section.n.1.1" class="show"><li><span class="module"><a href="./mrt-0.1.0.0/Data-Network-BGP.html">Data.Network.BGP</a></span> Border Gateway Protocol v4 types</li><li><span class="module"><a href="./mrt-0.1.0.0/Data-Network-MRT.html">Data.Network.MRT</a></span> Multi-Threaded Routing Toolkit Export Information Format types</li></ul></li></ul></li></ul></div></div><div id="footer"><p>Produced by <a href="http://www.haskell.org/haddock/">Haddock</a> version 2.16.1</p></div></body></html>
