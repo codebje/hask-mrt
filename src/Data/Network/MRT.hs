@@ -14,14 +14,14 @@ module Data.Network.MRT
     ( Timestamp
     , ASNumber
     , ASPathSegment
-    , BGPAttribute ( Origin
-                   , ASPath
-                   , LocalPref
-                   , AtomicAggregate
-                   , Aggregator
-                   , MultipathReach
-                   , Communities
-                   , UnknownAttribute)
+    , BGPAttributeValue ( Origin
+                        , ASPath
+                        , NextHop
+                        , LocalPref
+                        , AtomicAggregate
+                        , UnknownAttribute)
+    , BGPAttributeFlags (isOptional, isTransitive, isPartial, isExtLength)
+    , BGPAttribute (BGPAttribute)
     , RIBEntry
     , getPeerIndex
     , getOriginationTime
@@ -41,43 +41,19 @@ module Data.Network.MRT
 
 import           Control.Monad        (liftM, replicateM)
 import           Data.Binary
-import qualified Data.Binary.Bits.Get as BG
 import           Data.Binary.Get
 import qualified Data.ByteString      as BS
 import qualified Data.ByteString.Lazy as BL
 import           Data.IP
 import           Data.Maybe           (listToMaybe)
 import           Data.Network.BGP
-import           Data.Network.IP
 
 -- |The `Timestamp` type alias represents a BGP timestamp attribute,
 -- recorded as seconds since the Unix epoch.
 type Timestamp  = Word32
 
-data Community = NO_EXPORT
-               | NO_ADVERTISE
-               | NO_EXPORT_SUBCONFED
-               | COMMUNITY Word32
-   deriving (Show)
-
-data BGPAttribute = Origin Origin
-                  | ASPath [ASPathSegment]
-                  | LocalPref Word16
-                  | AtomicAggregate
-                  | Aggregator ASNumber IPv4
-                  | MultipathReach -- contents discarded
-                  | Communities [Community]
-                  | UnknownAttribute Word8 BS.ByteString
-    deriving (Show)
-
-data BGPAttributeFlags = BGPAttributeFlags
-    { isOptional   :: Bool
-    , isTransitive :: Bool
-    , isPartial    :: Bool
-    , isExtLength  :: Bool }
-
-instance Show BGPAttributeFlags where
-    show (BGPAttributeFlags o t p e) = map snd $ filter fst $ zip [o, t, p, e] "OTPE"
+-- instance Show BGPAttributeFlags where
+--     show (BGPAttributeFlags o t p e) = map snd $ filter fst $ zip [o, t, p, e] "OTPE"
 
 data RIBEntry = RIBEntry
     { getPeerIndex       :: Word16
@@ -113,45 +89,6 @@ getIPv4Range = getIPRange IPv4Range toIPv4 4
 getIPv6Range :: Get IPRange
 getIPv6Range = getIPRange IPv6Range toIPv6b 16
 
-getAttrFlags :: Get BGPAttributeFlags
-getAttrFlags = BG.runBitGet $
-    BG.block (BGPAttributeFlags <$> BG.bool <*> BG.bool <*> BG.bool <*> BG.bool)
-
-getCommunity :: Get Community
-getCommunity = do
-    community <- getWord32be
-    case community of
-        0xFFFFFF01 -> return NO_EXPORT
-        0xFFFFFF02 -> return NO_ADVERTISE
-        0xFFFFFF03 -> return NO_EXPORT_SUBCONFED
-        _          -> return (COMMUNITY community)
-
-getCommunities :: Get [Community]
-getCommunities = do
-    empty <- isEmpty
-    if empty
-        then return []
-        else do community   <- getCommunity
-                communities <- getCommunities
-                return (community:communities)
-
-attributeReader :: Word8 -> BS.ByteString -> BGPAttribute
-attributeReader 1  = Origin . toEnum . fromIntegral . BS.head
-attributeReader 2  = ASPath . runGet getPathSegments . BL.fromStrict
-attributeReader 5  = LocalPref . BS.foldl (\t v -> t * 256 + fromIntegral v) 0
-attributeReader 6  = const AtomicAggregate
-attributeReader 7  = runGet (Aggregator <$> getWord32be <*> get) . BL.fromStrict
-attributeReader 8  = runGet (Communities <$> getCommunities) . BL.fromStrict
-attributeReader 14 = const MultipathReach
-attributeReader t  = UnknownAttribute t
-
-getAttribute :: Get BGPAttribute
-getAttribute = do
-    flags <- getAttrFlags
-    atype <- getWord8
-    size  <- if isExtLength flags then getWord16be else liftM fromIntegral getWord8
-    bytes <- getByteString (fromIntegral size)
-    return $ attributeReader atype bytes
 
 getBytes16be :: Get BL.ByteString
 getBytes16be = getWord16be >>= getLazyByteString . fromIntegral
@@ -164,9 +101,7 @@ getAttributes = do
     empty <- isEmpty
     if empty
         then return []
-        else do attr <- getAttribute
-                attrs <- getAttributes
-                return (attr:attrs)
+        else (:) <$> get <*> getAttributes
 
 getRIBEntry :: Get RIBEntry
 getRIBEntry = RIBEntry

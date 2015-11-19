@@ -22,10 +22,10 @@ loadStream = liftM BZ.decompress . BL.readFile
 printRib :: IPRange -> RIBEntry -> IO ()
 printRib ip rib = do
     let path = listToMaybe $ filter isPath $ getBGPAttributes rib
-    putStrLn $ foldl (++) "" [show ip, "|", show path]
+    putStrLn $ concat [show ip, "|", show path]
     --let attrs = filter (getBGPAttributes rib
   where
-    isPath x = case x of {ASPath _ -> True; _ -> False}
+    isPath (BGPAttribute _ x) = case x of {ASPath _ -> True; _ -> False}
 
 printEntry :: MRTMessage -> IO ()
 printEntry msg = case getRecord msg of

@@ -11,7 +11,8 @@ files, of the kind you might find on the RouteViews archive.
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Data.Network.BGP (
-    Origin (IGP, EGP, INCOMPLETE)
+    ASNumber
+  , Origin (IGP, EGP, INCOMPLETE)
   , ASPath (getASPathSegments)
   , ASPathSegment (ASSet, ASSequence)
   , BGPAttributeValue ( Origin
@@ -21,11 +22,15 @@ module Data.Network.BGP (
                       , AtomicAggregate
                       , UnknownAttribute )
   , BGPAttributeFlags (isOptional, isTransitive, isPartial, isExtLength)
+  , BGPAttribute (BGPAttribute)
 ) where
 
+import           Control.Monad        (liftM)
 import           Data.Binary
+import qualified Data.Binary.Bits.Get as BG
 import           Data.Binary.Get
-import qualified Data.ByteString as BS
+import qualified Data.ByteString      as BS
+import qualified Data.ByteString.Lazy as BL
 import           Data.Proxy
 
 
@@ -77,7 +82,7 @@ instance Binary ASPathSegment where
 data BGPAttributeValue = Origin Origin
                        | ASPath ASPath
                        | NextHop BS.ByteString
-                       | LocalPref
+                       | LocalPref Word32
                        | AtomicAggregate
                        | UnknownAttribute Word8 BS.ByteString
     deriving (Read, Show)
@@ -92,20 +97,26 @@ data BGPAttributeFlags = BGPAttributeFlags
 data BGPAttribute = BGPAttribute BGPAttributeFlags BGPAttributeValue
     deriving (Read, Show)
 
+instance Binary BGPAttributeFlags where
+    get = BG.runBitGet $
+        BG.block (BGPAttributeFlags <$> BG.bool <*> BG.bool <*> BG.bool <*> BG.bool)
+    put = undefined
+
 instance Binary BGPAttribute where
     get = do
-        flags <- getAttrFlags
+        flags <- get
         atype <- getWord8
         size  <- if isExtLength flags then getWord16be else liftM fromIntegral getWord8
         bytes <- getByteString (fromIntegral size)
-        return $ attributeReader atype bytes
+        return . BGPAttribute flags $ attributeReader atype bytes
       where
         attributeReader 1  = Origin . toEnum . fromIntegral . BS.head
-        attributeReader 2  = ASPath . runGet getPathSegments . BL.fromStrict
+        attributeReader 2  = ASPath . runGet get . BL.fromStrict
         attributeReader 3  = NextHop
-        attributeReader 5  = LocalPref . BS.foldl (\t v -> t * 256 + fromIntegral v) 0
+        attributeReader 5  = LocalPref . runGet getWord32be . BL.fromStrict
         attributeReader 6  = const AtomicAggregate
         attributeReader t  = UnknownAttribute t
+    put = undefined
 
 ------- utility functions --------
 
