@@ -8,7 +8,7 @@ want.
 
 [Documentation] for the latest build is available.
 
-![Build status](https://travis-ci.org/codebje/hask-mrt.svg)
+[![Build status](https://travis-ci.org/codebje/hask-mrt.svg)](https://travis-ci.org/codebje/hask-mrt)
 
 ### Support for data types
 
